@@ -1,0 +1,135 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>今日工作日志</title>
+    <link rel="stylesheet" href="./styles.css">
+  </head>
+  <body>
+    <main class="app-shell">
+      <section class="auth-screen" id="authScreen" aria-label="登录注册">
+        <div class="auth-card">
+          <p class="eyebrow">团队工作汇报</p>
+          <h1>今日工作日志</h1>
+          <div class="auth-tabs" role="tablist" aria-label="账号操作">
+            <button class="auth-tab active" id="loginTab" data-auth-mode="login" type="button">登录</button>
+            <button class="auth-tab" id="registerTab" data-auth-mode="register" type="button">注册</button>
+          </div>
+          <label>
+            <span>账号</span>
+            <input id="username" autocomplete="username" placeholder="请输入账号">
+          </label>
+          <label>
+            <span>密码</span>
+            <input id="password" type="password" autocomplete="current-password" placeholder="至少 6 位">
+          </label>
+          <button class="primary-button auth-submit" id="authSubmit" type="button">登录</button>
+          <p class="auth-hint" id="authHint"></p>
+          <p class="auth-message" id="authMessage" role="status"></p>
+        </div>
+      </section>
+
+      <section class="main-app hidden" id="mainApp">
+        <header class="app-header">
+          <div>
+            <p class="eyebrow" id="todayLabel"></p>
+            <h1 id="pageTitle">记录工作</h1>
+            <p class="user-line" id="userLine"></p>
+          </div>
+          <div class="header-actions">
+            <button class="icon-button" id="themeToggle" type="button" aria-label="切换主题" title="切换主题">
+              <span aria-hidden="true">◐</span>
+            </button>
+            <button class="ghost-button compact" id="logoutButton" type="button">退出</button>
+          </div>
+        </header>
+
+        <section class="page active" id="pageRecord" data-page="record" aria-label="记录工作">
+          <section class="composer">
+            <label>
+              <span>工作内容</span>
+              <textarea id="workContent" rows="3" placeholder="例如：整理日志工具需求"></textarea>
+            </label>
+            <label>
+              <span>工作进度</span>
+              <textarea id="workProgress" rows="3" placeholder="例如：完成登录和数据隔离"></textarea>
+            </label>
+            <label>
+              <span>复盘优化</span>
+              <textarea id="workReview" rows="3" placeholder="例如：下一步优化汇报模板"></textarea>
+            </label>
+            <div class="composer-actions">
+              <button class="primary-button" id="addEntry" type="button">记录一条</button>
+              <button class="ghost-button" id="clearDraft" type="button">清空输入</button>
+            </div>
+          </section>
+
+          <section class="panel" aria-label="今日记录">
+            <div class="section-heading">
+              <h2>今日记录</h2>
+              <span id="todayCount">0 条</span>
+            </div>
+            <div class="entry-list" id="todayEntries"></div>
+          </section>
+        </section>
+
+        <section class="page" id="pageLog" data-page="log" aria-label="今日工作日志">
+          <section class="panel summary-panel">
+            <div class="section-heading">
+              <h2>今日工作日志</h2>
+              <button class="ghost-button compact" id="buildToday" type="button">刷新</button>
+            </div>
+            <textarea id="summaryOutput" class="summary-output" rows="14" readonly></textarea>
+            <button class="copy-button" id="copySummary" type="button">复制</button>
+            <p class="copy-status" id="copyStatus" role="status"></p>
+          </section>
+        </section>
+
+        <section class="page" id="pageTimeline" data-page="timeline" aria-label="时间轴">
+          <section class="panel timeline-panel">
+            <div class="section-heading">
+              <h2>时间轴</h2>
+              <input id="targetDate" type="date">
+            </div>
+            <div class="view-tabs" role="tablist" aria-label="视图">
+              <button class="tab active" data-view="day" type="button">日</button>
+              <button class="tab" data-view="week" type="button">周</button>
+              <button class="tab" data-view="month" type="button">月</button>
+              <button class="tab" data-view="year" type="button">年</button>
+            </div>
+            <div class="timeline-meta" id="timelineMeta"></div>
+            <div class="timeline" id="timeline"></div>
+          </section>
+        </section>
+      </section>
+    </main>
+
+    <nav class="bottom-nav hidden" id="bottomNav" aria-label="主菜单">
+      <button class="nav-item active" data-page-target="record" type="button">
+        <span class="nav-icon" aria-hidden="true">+</span>
+        <span>记录</span>
+      </button>
+      <button class="nav-item" data-page-target="log" type="button">
+        <span class="nav-icon" aria-hidden="true">=</span>
+        <span>日志</span>
+      </button>
+      <button class="nav-item" data-page-target="timeline" type="button">
+        <span class="nav-icon" aria-hidden="true">#</span>
+        <span>时间轴</span>
+      </button>
+    </nav>
+
+    <template id="entryTemplate">
+      <article class="entry-card">
+        <div class="entry-meta">
+          <span class="entry-index"></span>
+          <button class="text-button delete-entry" type="button">删除</button>
+        </div>
+        <div class="entry-body"></div>
+      </article>
+    </template>
+
+    <script src="./app.js" defer></script>
+  </body>
+</html>
