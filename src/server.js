@@ -1,4 +1,4 @@
-import { createReadStream } from "node:fs";
+import { createReadStream, readFileSync } from "node:fs";
 import { mkdir, readFile, rename, stat, writeFile } from "node:fs/promises";
 import { createServer } from "node:http";
 import { randomBytes, randomUUID, scrypt, timingSafeEqual } from "node:crypto";
@@ -7,13 +7,16 @@ import { promisify } from "node:util";
 import { fileURLToPath } from "node:url";
 
 const rootDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
+loadDotEnv(path.join(rootDir, ".env"));
 const publicDir = path.join(rootDir, "public");
 const dataDir = path.resolve(rootDir, process.env.DATA_DIR || "data");
+const logDir = path.resolve(rootDir, process.env.LOG_DIR || "logs");
 const usersFile = path.join(dataDir, "users.json");
 const sessionsFile = path.join(dataDir, "sessions.json");
 const entriesDir = path.join(dataDir, "entries");
 const port = Number.parseInt(process.env.PORT || "3000", 10);
 const host = process.env.HOST || "0.0.0.0";
+const cookieName = process.env.SESSION_COOKIE_NAME || "daily_log_session";
 const hashPassword = promisify(scrypt);
 
 const mimeTypes = {
@@ -23,6 +26,23 @@ const mimeTypes = {
   ".json": "application/json; charset=utf-8",
   ".svg": "image/svg+xml"
 };
+
+function loadDotEnv(filePath) {
+  try {
+    const content = readFileSync(filePath, "utf8");
+    for (const line of content.split(/\r?\n/)) {
+      const trimmed = line.trim();
+      if (!trimmed || trimmed.startsWith("#")) continue;
+      const separator = trimmed.indexOf("=");
+      if (separator === -1) continue;
+      const key = trimmed.slice(0, separator).trim();
+      const value = trimmed.slice(separator + 1).trim().replace(/^['"]|['"]$/g, "");
+      if (key && process.env[key] === undefined) process.env[key] = value;
+    }
+  } catch (error) {
+    if (error.code !== "ENOENT") throw error;
+  }
+}
 
 function log(level, message, meta = {}) {
   console[level === "error" ? "error" : "log"](JSON.stringify({
@@ -35,6 +55,7 @@ function log(level, message, meta = {}) {
 
 async function ensureStore() {
   await mkdir(dataDir, { recursive: true });
+  await mkdir(logDir, { recursive: true });
   await mkdir(entriesDir, { recursive: true });
   await ensureJsonFile(usersFile, []);
   await ensureJsonFile(sessionsFile, []);
@@ -136,11 +157,11 @@ function parseCookies(req) {
 }
 
 function sessionCookie(sessionId, maxAge = 60 * 60 * 24 * 30) {
-  return `daily_log_session=${encodeURIComponent(sessionId)}; HttpOnly; SameSite=Lax; Path=/; Max-Age=${maxAge}`;
+  return `${cookieName}=${encodeURIComponent(sessionId)}; HttpOnly; SameSite=Lax; Path=/; Max-Age=${maxAge}`;
 }
 
 async function getCurrentUser(req) {
-  const sessionId = parseCookies(req).daily_log_session;
+  const sessionId = parseCookies(req)[cookieName];
   if (!sessionId) return null;
 
   const sessions = await readJson(sessionsFile, []);
@@ -216,7 +237,7 @@ async function handleApi(req, res, requestUrl) {
   }
 
   if (req.method === "POST" && requestUrl.pathname === "/api/auth/logout") {
-    const sessionId = parseCookies(req).daily_log_session;
+    const sessionId = parseCookies(req)[cookieName];
     if (sessionId) {
       const sessions = await readJson(sessionsFile, []);
       await writeJson(sessionsFile, sessions.filter((item) => item.id !== sessionId));
@@ -329,6 +350,14 @@ await ensureStore();
 const server = createServer(async (req, res) => {
   const requestUrl = new URL(req.url || "/", `http://${req.headers.host || "localhost"}`);
   try {
+    if (req.method === "GET" && requestUrl.pathname === "/health") {
+      return sendJson(res, 200, {
+        status: "ok",
+        app: "workdata_codex0002",
+        time: new Date().toISOString(),
+        uptime: process.uptime()
+      });
+    }
     if (requestUrl.pathname.startsWith("/api/")) {
       return await handleApi(req, res, requestUrl);
     }
@@ -343,5 +372,5 @@ const server = createServer(async (req, res) => {
 });
 
 server.listen(port, host, () => {
-  log("info", "Daily Log Tool running", { url: `http://localhost:${port}`, dataDir });
+  log("info", "Daily Log Tool running", { url: `http://localhost:${port}`, dataDir, logDir });
 });
