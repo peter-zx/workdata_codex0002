@@ -362,70 +362,223 @@ async function copySummary() {
   }, 1800);
 }
 
-function getWeekRange(dateKey) {
+function addDays(dateKey, offset) {
   const date = fromDateKey(dateKey);
-  const day = date.getDay() || 7;
-  const start = new Date(date);
-  start.setDate(date.getDate() - day + 1);
-  const end = new Date(start);
-  end.setDate(start.getDate() + 6);
-  return [toDateKey(start), toDateKey(end)];
+  date.setDate(date.getDate() + offset);
+  return toDateKey(date);
 }
 
-function inRange(entryDate, start, end) {
-  return entryDate >= start && entryDate <= end;
+function getRangeDatesEnding(dateKey, days) {
+  return Array.from({ length: days }, (_, index) => addDays(dateKey, -index));
 }
 
-function getVisibleEntries() {
-  const target = state.targetDate;
-  if (state.view === "day") {
-    return state.entries.filter((entry) => entry.date === target);
-  }
-  if (state.view === "week") {
-    const [start, end] = getWeekRange(target);
-    return state.entries.filter((entry) => inRange(entry.date, start, end));
-  }
-  if (state.view === "month") {
-    return state.entries.filter((entry) => entry.date.slice(0, 7) === target.slice(0, 7));
-  }
-  return state.entries.filter((entry) => entry.date.slice(0, 4) === target.slice(0, 4));
+function entriesForDate(dateKey, newestFirst = false) {
+  return state.entries
+    .filter((entry) => entry.date === dateKey)
+    .sort((a, b) => newestFirst
+      ? new Date(b.createdAt) - new Date(a.createdAt)
+      : new Date(a.createdAt) - new Date(b.createdAt));
 }
 
-function viewTitle() {
-  const target = state.targetDate;
-  if (state.view === "day") return `${target} 日视图`;
-  if (state.view === "week") {
-    const [start, end] = getWeekRange(target);
-    return `${start} 至 ${end} 周视图`;
-  }
-  if (state.view === "month") return `${target.slice(0, 7)} 月视图`;
-  return `${target.slice(0, 4)} 年视图`;
+function countEntriesForDates(dateKeys) {
+  const dateSet = new Set(dateKeys);
+  return state.entries.filter((entry) => dateSet.has(entry.date)).length;
+}
+
+function jumpToDay(dateKey) {
+  state.targetDate = dateKey;
+  state.view = "day";
+  saveUiState();
+  render();
 }
 
 function renderTimeline() {
-  const entries = getVisibleEntries().sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
-  elements.timelineMeta.textContent = `${viewTitle()}，共 ${entries.length} 条`;
   elements.timeline.replaceChildren();
+  if (state.view === "day") {
+    renderDayTimeline();
+    return;
+  }
+  if (state.view === "week") {
+    renderWeekTimeline();
+    return;
+  }
+  if (state.view === "month") {
+    renderMonthTimeline();
+    return;
+  }
+  renderYearTimeline();
+}
+
+function renderDayTimeline() {
+  const entries = entriesForDate(state.targetDate, true);
+  elements.timelineMeta.textContent = `${state.targetDate} 日视图，共 ${entries.length} 条`;
+  elements.timeline.className = "timeline";
 
   if (entries.length === 0) {
     elements.timeline.append(emptyState("这个时间范围还没有记录。"));
     return;
   }
 
-  let lastDate = "";
-  let dateIndex = 0;
-  for (const entry of entries) {
-    if (entry.date !== lastDate) {
-      const heading = document.createElement("div");
-      heading.className = "timeline-date";
-      heading.textContent = formatters.monthDay.format(fromDateKey(entry.date));
-      elements.timeline.append(heading);
-      lastDate = entry.date;
-      dateIndex = 0;
-    }
-    elements.timeline.append(renderEntry(entry, dateIndex));
-    dateIndex += 1;
+  const heading = document.createElement("div");
+  heading.className = "timeline-date";
+  heading.textContent = formatters.monthDay.format(fromDateKey(state.targetDate));
+  elements.timeline.append(heading);
+  entries.forEach((entry, index) => elements.timeline.append(renderEntry(entry, index)));
+}
+
+function renderWeekTimeline() {
+  const dateKeys = getRangeDatesEnding(state.targetDate, 7);
+  elements.timelineMeta.textContent = `${dateKeys[dateKeys.length - 1]} 至 ${dateKeys[0]} 最近 7 天，共 ${countEntriesForDates(dateKeys)} 条`;
+  elements.timeline.className = "timeline range-timeline week-timeline";
+
+  for (const dateKey of dateKeys) {
+    const entries = entriesForDate(dateKey);
+    elements.timeline.append(renderWeekDayRow(dateKey, entries));
   }
+}
+
+function renderWeekDayRow(dateKey, entries) {
+  const row = document.createElement("article");
+  row.className = "timeline-row week-row";
+
+  row.append(renderTimelineMarker(dateKey, entries.length));
+
+  const card = document.createElement("div");
+  card.className = entries.length ? "timeline-card week-summary-card" : "timeline-card empty-day-card";
+
+  const header = document.createElement("div");
+  header.className = "timeline-card-header";
+  const title = document.createElement("strong");
+  title.textContent = relativeDateLabel(dateKey);
+  const count = document.createElement("span");
+  count.className = "count-pill";
+  count.textContent = `${entries.length} 条`;
+  header.append(title, count);
+  card.append(header);
+
+  if (entries.length === 0) {
+    const empty = document.createElement("p");
+    empty.className = "compact-empty";
+    empty.textContent = "暂无记录";
+    card.append(empty);
+  } else {
+    const summary = document.createElement("pre");
+    summary.className = "daily-readonly-summary";
+    summary.textContent = buildCompactDailySummary(entries);
+    card.append(summary);
+  }
+
+  row.append(card);
+  return row;
+}
+
+function renderMonthTimeline() {
+  const dateKeys = getRangeDatesEnding(state.targetDate, 30);
+  elements.timelineMeta.textContent = `${dateKeys[dateKeys.length - 1]} 至 ${dateKeys[0]} 最近 30 天，共 ${countEntriesForDates(dateKeys)} 条`;
+  elements.timeline.className = "timeline range-timeline month-timeline";
+
+  for (const dateKey of dateKeys) {
+    const entries = entriesForDate(dateKey);
+    elements.timeline.append(renderMonthDayRow(dateKey, entries));
+  }
+}
+
+function renderMonthDayRow(dateKey, entries) {
+  const row = document.createElement("button");
+  row.type = "button";
+  row.className = entries.length ? "timeline-row month-row has-entries" : "timeline-row month-row";
+  row.disabled = entries.length === 0;
+  if (entries.length) {
+    row.addEventListener("click", () => jumpToDay(dateKey));
+  }
+
+  row.append(renderTimelineMarker(dateKey, entries.length));
+
+  const content = document.createElement("div");
+  content.className = "month-preview";
+  const title = document.createElement("strong");
+  title.textContent = entries.length ? firstEntryTitle(entries[0]) : "暂无记录";
+  const meta = document.createElement("span");
+  meta.textContent = `${entries.length} 条`;
+  content.append(title, meta);
+  row.append(content);
+
+  return row;
+}
+
+function renderYearTimeline() {
+  const dateKeysNewestFirst = getRangeDatesEnding(state.targetDate, 365);
+  const dateKeys = [...dateKeysNewestFirst].reverse();
+  const total = countEntriesForDates(dateKeys);
+  elements.timelineMeta.textContent = `${dateKeys[0]} 至 ${dateKeys[dateKeys.length - 1]} 最近一年，共 ${total} 条`;
+  elements.timeline.className = "timeline year-timeline";
+
+  const grid = document.createElement("div");
+  grid.className = "year-heatmap";
+  for (const dateKey of dateKeys) {
+    const count = entriesForDate(dateKey).length;
+    const cell = document.createElement("button");
+    cell.type = "button";
+    cell.className = `heat-cell level-${heatLevel(count)}`;
+    cell.title = `${dateKey}：${count} 条`;
+    cell.setAttribute("aria-label", `${dateKey} ${count} 条记录`);
+    if (count > 0) {
+      cell.addEventListener("click", () => jumpToDay(dateKey));
+    } else {
+      cell.disabled = true;
+    }
+    grid.append(cell);
+  }
+  elements.timeline.append(grid);
+}
+
+function renderTimelineMarker(dateKey, count) {
+  const marker = document.createElement("div");
+  marker.className = count ? "timeline-marker has-entries" : "timeline-marker";
+
+  const day = document.createElement("strong");
+  day.textContent = formatters.monthDay.format(fromDateKey(dateKey));
+  const badge = document.createElement("span");
+  badge.textContent = `${count} 条`;
+  marker.append(day, badge);
+
+  return marker;
+}
+
+function relativeDateLabel(dateKey) {
+  const today = toDateKey(new Date());
+  if (dateKey === today) return "今天";
+  if (dateKey === addDays(today, -1)) return "昨天";
+  return dateKey;
+}
+
+function buildCompactDailySummary(entries) {
+  const lines = [];
+  entries.forEach((entry, index) => {
+    const summaryFields = summaryFieldsFor(entry);
+    const [firstField, ...restFields] = summaryFields;
+    if (firstField) {
+      lines.push(`${index + 1}. ${firstField[0]}：${firstField[1]}`);
+    } else {
+      lines.push(`${index + 1}.`);
+    }
+    for (const [label, value] of restFields) {
+      lines.push(`   ${label}：${value}`);
+    }
+    if (index < entries.length - 1) lines.push("");
+  });
+  return lines.join("\n");
+}
+
+function firstEntryTitle(entry) {
+  return entry.content || entry.progress || entry.review || "未命名记录";
+}
+
+function heatLevel(count) {
+  if (count === 0) return 0;
+  if (count === 1) return 1;
+  if (count <= 3) return 2;
+  return 3;
 }
 
 function setPage(page) {

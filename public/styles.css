@@ -395,6 +395,212 @@ input[type="password"]:focus {
   font-weight: 700;
 }
 
+.range-timeline {
+  position: relative;
+  gap: 10px;
+}
+
+.timeline-row {
+  position: relative;
+  display: grid;
+  grid-template-columns: 104px minmax(0, 1fr);
+  gap: 12px;
+  align-items: stretch;
+  width: 100%;
+}
+
+.timeline-row::before {
+  content: "";
+  position: absolute;
+  left: 84px;
+  top: 0;
+  bottom: -10px;
+  width: 1px;
+  background: var(--line);
+}
+
+.timeline-row:last-child::before {
+  bottom: 50%;
+}
+
+.timeline-marker {
+  position: relative;
+  display: grid;
+  align-content: start;
+  justify-items: end;
+  gap: 5px;
+  padding: 10px 20px 10px 0;
+  color: var(--muted);
+  font-size: 12px;
+  text-align: right;
+}
+
+.timeline-marker::after {
+  content: "";
+  position: absolute;
+  top: 15px;
+  right: 12px;
+  width: 9px;
+  height: 9px;
+  border: 2px solid var(--line);
+  border-radius: 50%;
+  background: var(--surface);
+  z-index: 1;
+}
+
+.timeline-marker.has-entries::after {
+  border-color: var(--accent);
+  background: var(--accent);
+}
+
+.timeline-marker strong {
+  color: var(--text);
+  font-size: 12px;
+}
+
+.timeline-marker span {
+  color: var(--muted);
+}
+
+.timeline-card {
+  min-width: 0;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface-soft);
+  padding: 12px;
+}
+
+.timeline-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+
+.timeline-card-header strong {
+  font-size: 14px;
+}
+
+.count-pill {
+  flex: 0 0 auto;
+  border-radius: 999px;
+  padding: 3px 8px;
+  background: color-mix(in srgb, var(--accent) 14%, transparent);
+  color: var(--accent-strong);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.daily-readonly-summary {
+  margin: 0;
+  color: var(--text);
+  font-family: inherit;
+  font-size: 13px;
+  line-height: 1.55;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.compact-empty {
+  margin: 0;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.empty-day-card {
+  background: transparent;
+  box-shadow: none;
+}
+
+.month-row {
+  border: 0;
+  padding: 0;
+  background: transparent;
+  color: inherit;
+  text-align: left;
+}
+
+.month-row:disabled {
+  cursor: default;
+}
+
+.month-row.has-entries .month-preview {
+  border-color: color-mix(in srgb, var(--accent) 32%, var(--line));
+}
+
+.month-row.has-entries:hover .month-preview {
+  transform: translateY(-1px);
+  border-color: var(--accent);
+}
+
+.month-preview {
+  min-width: 0;
+  display: grid;
+  gap: 5px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface-soft);
+  padding: 10px 12px;
+  transition: transform 0.15s ease, border-color 0.15s ease;
+}
+
+.month-preview strong {
+  min-width: 0;
+  color: var(--text);
+  font-size: 13px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.month-preview span {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.year-timeline {
+  margin-top: 16px;
+}
+
+.year-heatmap {
+  display: grid;
+  grid-template-columns: repeat(53, minmax(7px, 1fr));
+  gap: 4px;
+  align-items: end;
+}
+
+.heat-cell {
+  width: 100%;
+  aspect-ratio: 1;
+  min-width: 7px;
+  border: 0;
+  border-radius: 2px;
+  background: var(--surface-soft);
+  padding: 0;
+}
+
+.heat-cell:not(:disabled) {
+  cursor: pointer;
+}
+
+.heat-cell:not(:disabled):hover {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
+.heat-cell.level-1 {
+  background: color-mix(in srgb, var(--accent) 32%, var(--surface-soft));
+}
+
+.heat-cell.level-2 {
+  background: color-mix(in srgb, var(--accent) 62%, var(--surface-soft));
+}
+
+.heat-cell.level-3 {
+  background: var(--accent);
+}
+
 .empty-state {
   color: var(--muted);
   border: 1px dashed var(--line);
@@ -478,5 +684,27 @@ input[type="password"]:focus {
   .primary-button,
   .ghost-button {
     width: 100%;
+  }
+
+  .timeline-row {
+    grid-template-columns: 82px minmax(0, 1fr);
+    gap: 10px;
+  }
+
+  .timeline-row::before {
+    left: 66px;
+  }
+
+  .timeline-marker {
+    padding-right: 18px;
+  }
+
+  .daily-readonly-summary,
+  .month-preview strong {
+    font-size: 12px;
+  }
+
+  .year-heatmap {
+    grid-template-columns: repeat(26, minmax(8px, 1fr));
   }
 }
