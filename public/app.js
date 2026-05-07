@@ -320,14 +320,28 @@ function buildDailySummary(dateKey = toDateKey(new Date())) {
 
   const lines = [title, ""];
   entries.forEach((entry, index) => {
-    lines.push(`${index + 1}.`);
-    for (const [label, value] of fieldsFor(entry)) {
+    const summaryFields = summaryFieldsFor(entry);
+    const [firstField, ...restFields] = summaryFields;
+    if (firstField) {
+      lines.push(`${index + 1}. ${firstField[0]}：${firstField[1]}`);
+    } else {
+      lines.push(`${index + 1}.`);
+    }
+    for (const [label, value] of restFields) {
       lines.push(`   ${label}：${value}`);
     }
     if (index < entries.length - 1) lines.push("");
   });
 
   return lines.join("\n");
+}
+
+function summaryFieldsFor(entry) {
+  return [
+    ["内容", entry.content],
+    ["进度", entry.progress],
+    ["复盘", entry.review]
+  ].filter(([, value]) => value);
 }
 
 async function copySummary() {
